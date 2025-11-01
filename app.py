@@ -1,7 +1,19 @@
 import streamlit as st
-import random, os, io
+import random, io
 from PIL import Image, ImageOps
 from models.sketch_model import load_sketch_model, generate_sketch
+
+import os
+os.environ["STREAMLIT_SERVER_FILEWATCHER_TYPE"] = "none"
+os.environ["TMPDIR"] = "/app/temp"
+os.makedirs("/app/temp", exist_ok=True)
+
+# ✅ Fix Streamlit cache + config path
+# os.environ["STREAMLIT_HOME"] = "/app/.streamlit"
+# os.environ["STREAMLIT_CACHE_DIR"] = "/app/.streamlit/cache"
+# os.environ["TRANSFORMERS_CACHE"] = "/app/.cache/huggingface"
+# os.makedirs("/app/.streamlit/cache", exist_ok=True)
+# os.makedirs("/app/.cache/huggingface", exist_ok=True)
 
 # -------------------------------
 # PAGE CONFIG
@@ -30,44 +42,30 @@ st.markdown("""
 def get_model():
     return load_sketch_model()
 
+# st.write("🚀 Loading model...")
 pipe = get_model()
+# st.write("✅ Model loaded successfully")
 
 # -------------------------------
 # HEADER
 # -------------------------------
-st.markdown("<h1 class='title'>Kenney Studio 🎨</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='title'> 🎨Kenney Studio</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Transform your photo into a realistic pencil sketch masterpiece.</p>", unsafe_allow_html=True)
 
 # -------------------------------
-# IMAGE INPUT SECTION (Unified)
+# IMAGE INPUT SECTION (Upload Only)
 # -------------------------------
+st.markdown("### 📸 Upload Your Photo")
+# st.write("🔍 Upload section reached")
+
 uploaded_img = None
+uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
 
-# st.markdown("### 📸 Choose Your Photo")
-
-option = st.radio("Select source:", ["Upload from device", "Take a live photo"], horizontal=True)
-
-if option == "Upload from device":
-    uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
-    if uploaded_file:
-        uploaded_img = Image.open(uploaded_file).convert("RGB")
-
-elif option == "Take a live photo":
-    camera_input = st.camera_input("Take a photo")
-    if camera_input:
-        uploaded_img_live = Image.open(camera_input).convert("RGB")
-
-# Display the chosen image (if available)
-if uploaded_img is not None:
-    st.image(uploaded_img, caption="Selected Image", use_container_width=True)
-    st.markdown("<div style='text-align:center; margin-top:20px;'>", unsafe_allow_html=True)
-    # process_btn = st.button("✨ Sketch My Photo", type="primary")
-    # st.markdown("</div>", unsafe_allow_html=True)
-
-# -------------------------------
-# PROCESS BUTTON
-# -------------------------------
-if uploaded_img is not None:
+# st.title("UPLOAD TEST")
+if uploaded_file is not None:
+    uploaded_img = Image.open(uploaded_file).convert("RGB")
+    # st.image(uploaded_img, caption="Selected Image", use_container_width=True)
+    st.image(uploaded_img, caption="Selected Image", width="stretch")
     st.markdown("<div style='text-align:center; margin-top:20px;'>", unsafe_allow_html=True)
     process_btn = st.button("✨ Sketch My Photo", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -77,8 +75,7 @@ if uploaded_img is not None:
             # Fix orientation + resize before sending to model
             uploaded_img = ImageOps.exif_transpose(uploaded_img)
             uploaded_img = uploaded_img.resize((512, 512))
-
-            sketch_result = generate_sketch(pipe, uploaded_img)
+            sketch_result = generate_sketch(pipe, uploaded_img, steps=15)
         
         # Convert for download
         buf = io.BytesIO()
@@ -88,9 +85,11 @@ if uploaded_img is not None:
         # Display results side by side
         colA, colB = st.columns(2)
         with colA:
-            st.image(uploaded_img, caption="Original Image", use_container_width=True)
+            # st.image(uploaded_img, caption="Original Image", use_container_width=True)
+            st.image(uploaded_img, caption="Original Image", width="stretch")
         with colB:
-            st.image(sketch_result, caption="Pencil Sketch", use_container_width=True)
+            # st.image(sketch_result, caption="Pencil Sketch", use_container_width=True)
+            st.image(sketch_result, caption="Pencil Sketch", width="stretch")
             st.download_button("⬇️ Download Sketch", data=byte_im, file_name="kenney_sketch.jpg", mime="image/jpeg")
 
 # -------------------------------
@@ -136,3 +135,14 @@ else:
 # FOOTER
 # -------------------------------
 st.markdown("<hr><p style='text-align:center; color:#888;'>© 2025 Kenney Studio | Crafted with ❤️ by Mr. Android</p>", unsafe_allow_html=True)
+
+# import streamlit as st
+# from PIL import Image
+
+# st.title("Upload test")
+
+# uploaded = st.file_uploader("Upload image", type=["png", "jpg", "jpeg"])
+# if uploaded:
+#     st.image(Image.open(uploaded), caption="Preview")
+# else:
+#     st.warning("No file uploaded yet.")
